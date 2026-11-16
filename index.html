@@ -1,0 +1,136 @@
+
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Snake SDJ</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#080d0a;color:white;font-family:Arial,sans-serif;text-align:center}
+header{padding:25px 10px 10px}
+h1{color:#42f477;font-size:38px;margin:5px}
+header p{color:#9bb5a2}
+.stats{display:flex;justify-content:center;gap:35px;margin:15px}
+.stats b{display:block;font-size:25px;color:#55f58b}
+canvas{width:min(90vw,420px);height:min(90vw,420px);background:#111e15;border:3px solid #35db70;border-radius:12px;touch-action:none}
+button{background:#193c27;color:white;border:1px solid #39e878;border-radius:12px;padding:14px 20px;font-size:17px;font-weight:bold}
+#start{background:#27ce66;color:#06120a;margin:12px}
+.controls{display:grid;grid-template-columns:65px 65px 65px;justify-content:center;gap:8px;margin:18px}
+.controls button{font-size:25px;padding:10px}
+#message{color:#b7f8c8;min-height:24px}
+footer{color:#78917e;padding:15px}
+</style>
+</head>
+<body>
+<header>
+<h1>🐍 SNAKE SDJ</h1>
+<p>Le jeu officiel • Mange et deviens le meilleur !</p>
+</header>
+<div class="stats">
+<div> SCORE <b id="score">0</b></div>
+<div> RECORD <b id="best">0</b></div>
+</div>
+<canvas id="game" width="400" height="400"></canvas>
+<div><button id="start">▶ JOUER</button></div>
+<div id="message">Appuie sur JOUER pour commencer</div>
+<div class="controls">
+<span></span><button data-dir="up">⬆️</button><span></span>
+<button data-dir="left">⬅️</button>
+<button data-dir="down">⬇️</button>
+<button data-dir="right">➡️</button>
+</div>
+<footer>SDJ 🐍 • Bonne chance !</footer>
+<script>
+const c=document.getElementById('game'),ctx=c.getContext('2d');
+const scoreEl=document.getElementById('score');
+const bestEl=document.getElementById('best');
+const msg=document.getElementById('message');
+const start=document.getElementById('start');
+const size=20,cell=20;
+let snake,food,dir,next,score,best=0,playing=false,loop;
+try{best=Number(localStorage.getItem('sdjBest'))||0}catch(e){}
+bestEl.textContent=best;
+function placeFood(){
+ do{food={x:Math.floor(Math.random()*size),y:Math.floor(Math.random()*size)}}
+ while(snake.some(p=>p.x===food.x&&p.y===food.y));
+}
+function reset(){
+ snake=[{x:10,y:10},{x:9,y:10},{x:8,y:10}];
+ dir='right';next='right';score=0;scoreEl.textContent=0;
+ placeFood();draw();
+}
+function draw(){
+ ctx.fillStyle='#111e15';ctx.fillRect(0,0,400,400);
+ ctx.fillStyle='#ff5555';
+ ctx.beginPath();ctx.arc(food.x*20+10,food.y*20+10,8,0,Math.PI*2);ctx.fill();
+ snake.forEach((p,i)=>{
+ ctx.fillStyle=i===0?'#baffc9':'#36e878';
+ ctx.fillRect(p.x*20+1,p.y*20+1,18,18);
+ });
+}
+function end(){
+ clearInterval(loop);playing=false;
+ msg.textContent='Partie terminée ! Score : '+score;
+ start.textContent='↻ REJOUER';
+}
+function tick(){
+ dir=next;
+ let h={...snake[0]};
+ if(dir==='up')h.y--;
+ if(dir==='down')h.y++;
+ if(dir==='left')h.x--;
+ if(dir==='right')h.x++;
+ let ate=h.x===food.x&&h.y===food.y;
+ if(h.x<0||h.x>=20||h.y<0||h.y>=20||
+ snake.some((p,i)=>p.x===h.x&&p.y===h.y&&
+ (ate||i!==snake.length-1))){end();return}
+ snake.unshift(h);
+ if(ate){
+ score++;scoreEl.textContent=score;
+ if(score>best){
+ best=score;bestEl.textContent=best;
+ try{localStorage.setItem('sdjBest',best)}catch(e){}
+ }
+ placeFood();
+ clearInterval(loop);
+ loop=setInterval(tick,Math.max(65,145-score*3));
+ }else snake.pop();
+ draw();
+}
+function play(){
+ if(playing)return;
+ reset();playing=true;msg.textContent='À toi de jouer !';
+ start.textContent='↻ RECOMMENCER';
+ clearInterval(loop);loop=setInterval(tick,145);
+}
+function turn(d){
+ const opposite={up:'down',down:'up',left:'right',right:'left'};
+ if(d!==opposite[dir])next=d;
+}
+start.addEventListener('click',()=>{
+ if(playing){clearInterval(loop);playing=false}
+ play();
+});
+document.querySelectorAll('[data-dir]').forEach(b=>
+ b.addEventListener('click',()=>turn(b.dataset.dir)));
+document.addEventListener('keydown',e=>{
+ const keys={ArrowUp:'up',ArrowDown:'down',
+ ArrowLeft:'left',ArrowRight:'right'};
+ if(keys[e.key]){e.preventDefault();turn(keys[e.key])}
+});
+let sx=0,sy=0;
+c.addEventListener('touchstart',e=>{
+ sx=e.touches[0].clientX;sy=e.touches[0].clientY;
+},{passive:true});
+c.addEventListener('touchend',e=>{
+ let dx=e.changedTouches[0].clientX-sx;
+ let dy=e.changedTouches[0].clientY-sy;
+ if(Math.max(Math.abs(dx),Math.abs(dy))<15)return;
+ turn(Math.abs(dx)>Math.abs(dy)?
+ (dx>0?'right':'left'):(dy>0?'down':'up'));
+},{passive:true});
+reset();
+</script>
+</body>
+</html>
